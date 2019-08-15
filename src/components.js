@@ -15,7 +15,9 @@ export function Modal({ isOpen, children }){
         </div>
 }
 
-export const TextArea = ({value='', onChange, ...other}) => {
+document.execCommand('insertText', false, ' '.repeat(4));
+
+export const TextArea = ({value='', onChange, ...others}) => {
     return (
       <textarea
         value={value}
@@ -23,8 +25,7 @@ export const TextArea = ({value='', onChange, ...other}) => {
         onKeyDown={(e) => {
         if(e.keyCode === 9){
           e.preventDefault();
-          document.execCommand('insertText', false, ' '.repeat(4));
         }
-      }} {...other}/>
+      }} {...others}/>
     )
   }
