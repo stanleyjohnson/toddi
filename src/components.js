@@ -29,3 +29,8 @@ export const TextArea = ({value='', onChange, ...others}) => {
       }} {...others}/>
     )
   }
+
+export  const tint = ([r,g,b]) => {
+    const a = 0.5
+    return [(255-r)*a+r, (255-g)*a+g, (255-b)*a+b]
+}

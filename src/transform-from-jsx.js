@@ -1,38 +1,32 @@
+import * as babel from '@babel/core'
+import reactJsxPlugin from '@babel/plugin-transform-react-jsx'
+import generate from '@babel/generator';
 import * as t from "babel-types";
-const babel = window.Babel
-
-babel.registerPlugin('lolizer', lolizer);
 
 export function transformFromJsx(code){
-  return babel.transform(
+  return babel.transformAsync(
     code,
-    {plugins: ['lolizer'], presets:['react']}
-  )
+    {plugins: [reactJsxPlugin]}
+  ).then(res => {
+    return babel.transformAsync(
+      res.code,
+      {plugins:[lolizer]}
+    ).then(r => {
+      return [r,tree]
+    })
+  })
 }
 
-const alphas = []
-for(let i=65; i<=90; i++){
-  alphas.push(String.fromCharCode(i))
-}
+// let alphas = []
+// for(let i=65; i<=90; i++){
+//   alphas.push(String.fromCharCode(i))
+// }
 
-const state = null
-const currentIndex = null
+let tree, index
 
 export function lolizer() {
-
-  state = {}
-  currentIndex = [] 
-
-  function createTemplateBlock(path){
-    this.path = path
-    this.jsBlocks = {}
-  }
-
-  function createJsBlock(path){
-    this.path = path
-    this.templateBlocks = {}
-  }
-  
+  tree = {}
+  index = 0
   const TemplateVisitor = {
     Identifier(path) {
       // console.log(path.node.name)
@@ -40,15 +34,58 @@ export function lolizer() {
   }
 
   const JsVisitor = {
-    Identifier(path) {
-      if(path.node.name==='createElement' && path.parent.type==='MemberExpression' && path.parent.object.name==='React'){
-        currentIndex.push(alphas)
-        // createTemplateBlock
+    CallExpression : {
+      enter(path,state){
+        if(path.node.callee.type==='MemberExpression' 
+      && path.node.callee.object.name==='React' && path.node.callee.property.name==='createElement'){
+        
         // debugger
-        console.log('!@#')
+
+        if(!path.treePointer){
+          let x = {}
+          let templateIndex = 'T' + index++
+          tree[templateIndex] = x
+          x.templateIndex = templateIndex
+          path.treePointer = x
+          x.isTopLevelTemplate = true
+        }
+        let tr = path.treePointer
+        tr.type = path.node.arguments[0].name
+        tr.props = generate(path.node.arguments[1]).code
+        tr.children = null
+        tr.childrenJsExp = []
+
+        let childrenPaths = path.get('arguments').slice(2)
+        if(childrenPaths.length){
+          tr.children = []
+          childrenPaths.forEach((childPath) => {
+            let ct = {}
+            if(childPath.node.type !== 'CallExpression'){
+              tr.childrenJsExp.push(childPath)
+            }
+            tr.children.push(ct)
+            childPath.treePointer = ct
+            childPath.traverse(JsVisitor)
+          })
+        }
+
+        }
+      },
+      exit(path,state){
+
+        if(path.node.callee.type==='MemberExpression' 
+      && path.node.callee.object.name==='React' && path.node.callee.property.name==='createElement'){
+          let tr = path.treePointer
+          if(!tr.childrenJsExp.length){
+            if(tr.isTopLevelTemplate){
+              path.replaceWith(
+                t.stringLiteral(tr.templateIndex)
+              );
+            }
+          }
+        }
       }
-      
-    }
+    },
   }
 
   return {
